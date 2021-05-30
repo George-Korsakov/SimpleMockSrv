@@ -4,7 +4,7 @@ import java.util.Random;
 import java.util.UUID;
 
 public class Prices {
-
+    // формирует xml ответа по id  в запросе генерируя случайные значения
     public static String productById(String id) {
         String name = getRandomString(10);
         Number price = rnd(5);
@@ -23,7 +23,7 @@ public class Prices {
         return resp ;
     }
 
-
+    // формирует xml ответа по наименованию в запросе генерируя случайные значения
     public static String productByName(String name) {
         String id = generateString();
         Number price = rnd(5);

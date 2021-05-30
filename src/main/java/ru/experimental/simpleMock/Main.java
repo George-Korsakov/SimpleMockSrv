@@ -14,7 +14,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-
+// тестовая заглука для имитации ответа  HTTP сервсиа внешней системы по данным из запроса
+// для того, что бы получить ответ запрос должен содержать query в uri
+// или слово test
+// или заголовоки SOAPAction или Content-Type:text/xml , а в теле POST запроса XML в котором проверяется знаечние query
 public class Main {
     public static void main(String[] args) throws IOException, InterruptedException {
         // создаем HTTP сервер который принимает запросы на заданном порту и кол-во на очередь соединений
