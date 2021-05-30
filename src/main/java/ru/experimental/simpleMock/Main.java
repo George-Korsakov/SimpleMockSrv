@@ -4,38 +4,34 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 
 public class Main {
     public static void main(String[] args) throws IOException, InterruptedException {
         // создаем HTTP сервер который принимает запросы на заданном порту и кол-во на очередь соединений
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 5);
         // проверка URI выполняет MyHandler
-        server.createContext("/", new SimpleServerTest.queryHandler());
-
-        String addrr = server.getAddress().toString();
-        System.out.println("DEBUG: " + addrr) ;
-
-        //server.createContext("?query=", new SimpleServerTest.queryHandler());
+        server.createContext("/", new SimpleServerTest.Handler());
+        //запскаем сервис
         ExecutorService executor = Executors.newFixedThreadPool(5);
         server.setExecutor(executor);
         server.start();
-
-
         // ожидание заверщение работы HTTP серврера
         executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
 
     }
 
-    public static class SimpleServerTest {
-
+    public static class SimpleServerTest extends Prices {
+        // формирование простейшего ответа с статус кодом 200
         static class MyHandler implements HttpHandler {
             public void handle(HttpExchange t) throws IOException {
                 // формирвется и возвращается ответа
@@ -47,45 +43,79 @@ public class Main {
             }
         }
 
-        static  class  queryHandler implements  HttpHandler {
+        static  class Handler implements  HttpHandler {
             public void handle(HttpExchange t) throws IOException {
                 // формирвется и возвращается ответа
 
-                //Create a response form the request query parameters
-                URI uri = t.getRequestURI();
-                String url = t.getRequestURI().toString();
-                String metod = t.getRequestMethod().toString();
-                String body = t.getRequestBody().toString();
-                String headers = t.getRequestHeaders().toString();
-                System.out.println("URI = " + url);
+                // для отладки
+                String uri = t.getRequestURI().toString();
+                String metod = t.getRequestMethod();
+                System.out.println("URI = " + uri);
+                System.out.println("query in URI exist  " + uri.contains("?"));
                 System.out.println("METOD = " + metod);
-                System.out.println("HEADERS = " + headers);
-                System.out.println("BODY = " + body);
-
-                String response = createResponseFromQueryParams(uri);
-                t.sendResponseHeaders(200, response.length());
-                OutputStream os = t.getResponseBody();
-                os.write(response.getBytes());
+                // проверяем наличие в запросе заголовка SOAPAction или Content-Type:text/xml
+                //System.out.println("HEADER Content-Type = " + t.getRequestHeaders().get("Content-Type"));
+                if(t.getRequestHeaders().containsKey("SOAPAction") || t.getRequestHeaders().get("Content-Type").contains("text/xml")) {
+                    // получаем содержимое телa запроса
+                    InputStream bodyReq  = t.getRequestBody();
+                    String bodyXml = new BufferedReader(new InputStreamReader(bodyReq)).lines()
+                            .parallel().collect(Collectors.joining("\n"));
+                    System.out.println("TEST reqBody: " + bodyXml);
+                    // получеаем значение из тела запроса
+                    String value = getValueInRequestXMLBody(bodyXml);
+                    assert value != null;
+                    //  елси в запросе цифры "^\D*$"
+                    if(value.matches("^\\D*$")) {
+                        String response = Prices.productByName(value);
+                        t.sendResponseHeaders(200, response.length());
+                        OutputStream os = t.getResponseBody();
+                        os.write(response.getBytes());
+                    } else {
+                        String response = Prices.productById(value);
+                        t.sendResponseHeaders(200, response.length());
+                        OutputStream os = t.getResponseBody();
+                        os.write(response.getBytes());
+                    }
+                } else {
+                    if (t.getRequestURI().toString().contains("?")) {
+                        // получаем URI запроса
+                        URI query = t.getRequestURI();
+                        // формирует ответ по query в запросе
+                        //String response = "query test";
+                        System.out.println("TEST if query exist");
+                        String response = createResponseFromQueryParams(query);
+                        t.sendResponseHeaders(200, response.length());
+                        OutputStream os = t.getResponseBody();
+                        os.write(response.getBytes());
+                    } else {
+                        // если запрос не подходит ни под одно условие от вовзвращаем ответ с таким текстом
+                        String response = " ERROR! Request not contain SOAPAction header or query string";
+                        t.sendResponseHeaders(404, response.length());
+                        OutputStream os = t.getResponseBody();
+                        os.write(response.getBytes());
+                    }
+                }
 
             }
 
+
+            // возврщает строук по query с его знчением
             private String createResponseFromQueryParams(URI uri) {
                 //получение запроса query
                 String query = uri.getQuery();
-                String answer = "Query contains: " + query;
+                // todo тут будет формироваться json по знаыению query в запросе
+                String answer = "{ \"Query in request contain\": \"" + query + "\" }";
                 return answer;
             }
-
-            public void handleIN(HttpExchange t) throws IOException {
-                String uri = t.getRequestURI().toString();
-                String metod = t.getRequestMethod().toString();
-                String body = t.getRequestBody().toString();
-                String headers = t.getRequestHeaders().toString();
-                System.out.println("URI = " + uri);
-                System.out.println("METOD = " + metod);
-                System.out.println("HEADERS = " + headers);
-                System.out.println("BODY = " + body);
-
+            // возвразает занчение из строки xml по тегу
+            private String getValueInRequestXMLBody(String body) {
+                // получаем значене из xml прведставленного в виде строки
+                final Pattern pattern = Pattern.compile("<query>(.+?)</query>", Pattern.DOTALL);
+                final Matcher matcher = pattern.matcher(body);
+                matcher.find();
+                System.out.println("TEST DEBUG matcher = " + matcher.group(1));
+                String answer = matcher.group(1);
+                return answer;
             }
         }
 
