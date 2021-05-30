@@ -43,7 +43,7 @@ public class Main {
             }
         }
 
-        static  class Handler implements  HttpHandler {
+        static class Handler implements HttpHandler {
             public void handle(HttpExchange t) throws IOException {
                 // формирвется и возвращается ответа
 
@@ -53,51 +53,54 @@ public class Main {
                 System.out.println("URI = " + uri);
                 System.out.println("query in URI exist  " + uri.contains("?"));
                 System.out.println("METOD = " + metod);
-                // проверяем наличие в запросе заголовка SOAPAction или Content-Type:text/xml
+
                 //System.out.println("HEADER Content-Type = " + t.getRequestHeaders().get("Content-Type"));
-                if(t.getRequestHeaders().containsKey("SOAPAction") || t.getRequestHeaders().get("Content-Type").contains("text/xml")) {
-                    // получаем содержимое телa запроса
-                    InputStream bodyReq  = t.getRequestBody();
+                if (t.getRequestURI().toString().contains("?")) {
+                    System.out.println("TEST if query exist");
+                    // получаем URI запроса
+                    URI query = t.getRequestURI();
+                    // формирует ответ по query в запросе
+                    //String response = "query test";
+                    String response = createResponseFromQueryParams(query);
+                    t.sendResponseHeaders(200, response.length());
+                    OutputStream os = t.getResponseBody();
+                    os.write(response.getBytes());
+                    // формирование ответа при совпадении uri
+                } else if (t.getRequestURI().toString().contains("test")) {
+                    String response = "TEST";
+                    t.sendResponseHeaders(200, response.length());
+                    OutputStream os = t.getResponseBody();
+                    os.write(response.getBytes());
+                    // проверяем наличие в запросе заголовка SOAPAction или Content-Type:text/xml
+                }  else if (t.getRequestHeaders().containsKey("SOAPAction") || t.getRequestHeaders().get("Content-Type").contains("text/xml")) {
+                    // получаем содержимое телa запроса в виде строки
+                    InputStream bodyReq = t.getRequestBody();
                     String bodyXml = new BufferedReader(new InputStreamReader(bodyReq)).lines()
                             .parallel().collect(Collectors.joining("\n"));
                     System.out.println("TEST reqBody: " + bodyXml);
                     // получеаем значение из тела запроса
                     String value = getValueInRequestXMLBody(bodyXml);
                     assert value != null;
-                    //  елси в запросе цифры "^\D*$"
-                    if(value.matches("^\\D*$")) {
-                        String response = Prices.productByName(value);
-                        t.sendResponseHeaders(200, response.length());
-                        OutputStream os = t.getResponseBody();
-                        os.write(response.getBytes());
-                    } else {
-                        String response = Prices.productById(value);
-                        t.sendResponseHeaders(200, response.length());
-                        OutputStream os = t.getResponseBody();
-                        os.write(response.getBytes());
-                    }
-                } else {
-                    if (t.getRequestURI().toString().contains("?")) {
-                        // получаем URI запроса
-                        URI query = t.getRequestURI();
-                        // формирует ответ по query в запросе
-                        //String response = "query test";
-                        System.out.println("TEST if query exist");
-                        String response = createResponseFromQueryParams(query);
-                        t.sendResponseHeaders(200, response.length());
-                        OutputStream os = t.getResponseBody();
-                        os.write(response.getBytes());
-                    } else {
-                        // если запрос не подходит ни под одно условие от вовзвращаем ответ с таким текстом
-                        String response = " ERROR! Request not contain SOAPAction header or query string";
-                        t.sendResponseHeaders(404, response.length());
-                        OutputStream os = t.getResponseBody();
-                        os.write(response.getBytes());
-                    }
+                        //  елси в запросе цифры то по ID поиск, если нет то по наименованию
+                        if (value.matches("^\\D*$")) {
+                            String response = Prices.productByName(value);
+                            t.sendResponseHeaders(200, response.length());
+                            OutputStream os = t.getResponseBody();
+                            os.write(response.getBytes());
+                        } else {
+                            String response = Prices.productById(value);
+                            t.sendResponseHeaders(200, response.length());
+                            OutputStream os = t.getResponseBody();
+                            os.write(response.getBytes());
+                        }
+                }  else {
+                    // если запрос не подходит ни под одно условие от вовзвращаем ответ с таким текстом
+                    String response = " ERROR! Request not contain SOAPAction header or query string";
+                    t.sendResponseHeaders(404, response.length());
+                    OutputStream os = t.getResponseBody();
+                    os.write(response.getBytes());
                 }
-
             }
-
 
             // возврщает строук по query с его знчением
             private String createResponseFromQueryParams(URI uri) {
@@ -107,6 +110,7 @@ public class Main {
                 String answer = "{ \"Query in request contain\": \"" + query + "\" }";
                 return answer;
             }
+
             // возвразает занчение из строки xml по тегу
             private String getValueInRequestXMLBody(String body) {
                 // получаем значене из xml прведставленного в виде строки
