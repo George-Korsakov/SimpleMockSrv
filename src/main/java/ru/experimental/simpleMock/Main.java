@@ -3,16 +3,21 @@ package ru.experimental.simpleMock;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
 
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 
 // тестовая заглука для имитации ответа  HTTP сервсиа внешней системы по данным из запроса
 // для того, что бы получить ответ запрос должен содержать query в uri
@@ -63,7 +68,6 @@ public class Main {
                     // получаем URI запроса
                     URI query = t.getRequestURI();
                     // формирует ответ по query в запросе
-                    //String response = "query test";
                     String response = createResponseFromQueryParams(query);
                     t.sendResponseHeaders(200, response.length());
                     OutputStream os = t.getResponseBody();
@@ -109,9 +113,30 @@ public class Main {
             private String createResponseFromQueryParams(URI uri) {
                 //получение запроса query
                 String query = uri.getQuery();
-                // todo тут будет формироваться json по знаыению query в запросе
-                String answer = "{ \"Query in request contain\": \"" + query + "\" }";
-                return answer;
+                String queryValue = query.substring(query.indexOf("=")+1);
+                // получаем массив из запроса
+                List<String> items = Arrays.asList(queryValue.split(","));
+                if(items.size()>1){
+                    // создаем JSON
+                    JSONObject resultJson = new JSONObject();
+                    JSONObject obj = new JSONObject();
+                    // создаем и наполняем массив в JSON
+                    JSONArray ar = new JSONArray();
+                    for(int i=0; i<items.size();i++) {
+                        ar.add("" + items.get(i) + "");
+                        if (i%2 == 0) { ar.add("true");}
+                        else { ar.add("false");}
+                    }
+                    obj.put("Serach result", "SUCCESS");
+                    // формируем JSON для ответа
+                    resultJson.put("paramsArray", ar);
+                    resultJson.put("paramsObj", obj);
+                    return resultJson.toString();
+                } else {
+                    String answer = "{ \"Query in request contain One item\": \"" + items.get(0) + "\" }";
+                    return answer;
+                }
+
             }
 
             // возвразает занчение из строки xml по тегу
