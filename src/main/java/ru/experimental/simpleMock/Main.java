@@ -3,8 +3,8 @@ package ru.experimental.simpleMock;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
+import kong.unirest.json.JSONArray;
+import kong.unirest.json.JSONObject;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static java.lang.Math.round;
 
 
 // тестовая заглука для имитации ответа  HTTP сервсиа внешней системы по данным из запроса
@@ -116,26 +118,28 @@ public class Main {
                 String queryValue = query.substring(query.indexOf("=")+1);
                 // получаем массив из запроса
                 List<String> items = Arrays.asList(queryValue.split(","));
+                // создаем JSON
+                JSONObject resultJson = new JSONObject();
+                JSONArray ar = new JSONArray();
                 if(items.size()>1){
-                    // создаем JSON
-                    JSONObject resultJson = new JSONObject();
-                    JSONObject obj = new JSONObject();
                     // создаем и наполняем массив в JSON
-                    JSONArray ar = new JSONArray();
                     for(int i=0; i<items.size();i++) {
-                        ar.add("" + items.get(i) + "");
-                        if (i%2 == 0) { ar.add("true");}
-                        else { ar.add("false");}
+                        JSONObject obj = new JSONObject();
+                        obj.put("ObjId","" + items.get(i) + "");
+                        // результат в зависимости от четности случайного числа
+                        if (round(rnd(1000))%2 == 0) { obj.put("checking", "true");}
+                             else { obj.put("checking", "false");}
+                        ar.put(obj);
                     }
-                    obj.put("Serach result", "SUCCESS");
-                    // формируем JSON для ответа
-                    resultJson.put("paramsArray", ar);
-                    resultJson.put("paramsObj", obj);
-                    return resultJson.toString();
                 } else {
-                    String answer = "{ \"Query in request contain One item\": \"" + items.get(0) + "\" }";
-                    return answer;
+                    JSONObject obj = new JSONObject();
+                    obj.put("checking", "false");
+                    obj.put("ObjId","" + items.get(0) + "");
+                    ar.put(obj);
                 }
+                // формируем JSON для ответа
+                resultJson.put("Answers", ar);
+                return resultJson.toString();
 
             }
 
