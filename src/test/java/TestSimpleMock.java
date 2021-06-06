@@ -1,13 +1,8 @@
-
 import kong.unirest.Unirest;
-import kong.unirest.json.JSONObject;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import unirest.shaded.com.google.gson.JsonArray;
-import unirest.shaded.com.google.gson.JsonElement;
 import unirest.shaded.com.google.gson.JsonObject;
 import unirest.shaded.com.google.gson.JsonParser;
 
@@ -16,7 +11,8 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 public class TestSimpleMock {
@@ -36,6 +32,7 @@ public class TestSimpleMock {
 
     @Test
     public void testQuery() {
+        // генерируется запрос вида GET localhost:8080/query?ID=123
         String url = "http://localhost:8080/query?";
         String query = generateString();
         String  resp =  Unirest.get(url)
@@ -79,7 +76,7 @@ public class TestSimpleMock {
         String url = "http://localhost:8080/";
         String name = getRandomString(10);
         String body = generateXMLprice(name);
-        // формируем запрос с query в виде строки
+        // формируем POST запрос c XML
         String  respBody =  Unirest.post(url)
                 .header("SOAPAction", "http://localhost:8080/test")
                 .header("Content-Type","text/xml; charset=UTF-8")
